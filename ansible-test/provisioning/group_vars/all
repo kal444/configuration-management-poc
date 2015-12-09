@@ -1,0 +1,8 @@
+timezone: US/Central
+admin_email: kyle@yellowaxe.com
+users:
+  kal: Kyle Huang
+sudo_users:
+  - kal
+zsh_users:
+  - kal

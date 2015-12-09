@@ -1,0 +1,71 @@
+- name: setup hostname based on ansible name
+  hostname: name={{ inventory_hostname_short }}
+# ipv6 version of the address is a guess - not sure how to select the correct scope
+- name: update /etc/hosts based on ansible discovered IPs
+  template: src=etc/hosts.j2 dest=/etc/hosts owner=root group=root mode=0644
+
+- name: configure timezone - localtime
+  file: src=/usr/share/zoneinfo/{{ timezone }} dest=/etc/localtime state=link force=yes
+- name: configure timezone - timezone
+  template: src=etc/timezone.j2 dest=/etc/timezone
+
+- name: update and upgrade all packages
+  apt: update_cache=yes cache_valid_time=3600 upgrade=safe
+
+- name: create all users and disable password
+  user: name={{ item.key }} comment="{{ item.value }}" password=* state=present
+  with_dict: users
+
+- name: push out ssh keys
+  authorized_key: user={{ item.key }} key="{{ lookup('file', 'public_keys/' + item.key + '/id_rsa.pub') }}"
+  with_dict: users
+
+- name: lock down sshd
+  template: src=etc/ssh/sshd_config.j2 dest=/etc/ssh/sshd_config owner=root group=root mode=0440
+  notify: restart sshd
+
+- name: add priviledged users to special groups
+  user: name={{ item }} groups=sudo append=yes
+  with_items: sudo_users
+
+- name: setup sudoers
+  template: src=etc/sudoers.d/ansible.j2 dest=/etc/sudoers.d/ansible owner=root group=root mode=0440
+
+- name: disable and reset all firewall rules
+  ufw: state=reset
+- name: deny all incoming
+  ufw: direction=incoming policy=deny
+- name: allow all outgoing
+  ufw: direction=outgoing policy=allow
+- name: allow ssh only
+  ufw: rule=allow port=ssh protocol=tcp
+- name: rate limit ssh connections
+  ufw: rule=limit port=ssh protocol=tcp
+- name: enable firewall
+  ufw: state=enabled
+
+#- name: verify ssh and sudo using a new admin user
+#  ping:
+#  remote_user: "{{ sudo_users |random }}"
+#  sudo: yes
+
+- name: disable root password
+  user: name=root password=*
+
+- name: ban failed logins
+  apt: name=fail2ban state=present
+
+- name: enable log watcher
+  apt: name=logwatch state=present
+- name: setup log watcher mailer
+  template: src=etc/cron.daily/00logwatch.j2 dest=/etc/cron.daily/00logwatch owner=root group=root mode=0755
+
+- name: enable automatic security updates
+  apt: name=unattended-upgrades state=present
+
+- name: install zsh
+  apt: name=zsh state=present
+- name: setup zsh as shell for users
+  user: name={{ item }} shell=/usr/bin/zsh
+  with_items: zsh_users
+

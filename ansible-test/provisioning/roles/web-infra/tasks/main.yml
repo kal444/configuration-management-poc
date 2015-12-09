@@ -1,0 +1,43 @@
+- name: install nginx
+  apt: name=nginx state=present
+
+- name: copy nginx conf
+  copy: src=etc/nginx/nginx.conf dest=/etc/nginx/nginx.conf mode=0644
+  notify: restart nginx
+
+- name: copy cloudflare ips
+  copy: src=etc/nginx/conf.d/cloudflare-real-ip-mapping.conf dest=/etc/nginx/conf.d/cloudflare-real-ip-mapping.conf mode=0644
+  notify: restart nginx
+
+- name: copy default site
+  copy: src=etc/nginx/sites-available/default dest=/etc/nginx/sites-available/default mode=0644
+  notify: restart nginx
+
+- name: copy all sites
+  copy: src=etc/nginx/sites-available/{{ item }} dest=/etc/nginx/sites-available/{{ item }} mode=0644
+  notify: restart nginx
+  with_items: websites
+
+- name: ensure website roots are there
+  file: path=/srv/sites/{{ item }} state=directory owner=www-data group=www-data mode=0755
+  with_items: websites
+
+- name: sync sites
+  synchronize: src=sites/{{ item }}/ dest=/srv/sites/{{ item }}/ delete=yes
+  with_items: websites
+
+- name: enable default site
+  file: src=/etc/nginx/sites-available/default dest=/etc/nginx/sites-enabled/default state=link
+  notify: restart nginx
+
+- name: enable default site
+  file: src=/etc/nginx/sites-available/{{ item }} dest=/etc/nginx/sites-enabled/{{ item }} state=link
+  notify: restart nginx
+  with_items: websites
+
+- name: allow port 80
+  ufw: rule=allow port=80 proto=tcp
+
+- name: ensure nginx is started
+  service: name=nginx state=started
+

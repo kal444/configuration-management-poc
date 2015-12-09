@@ -1,0 +1,5 @@
+---
+- hosts: vpnservers
+  roles: 
+    - vpn
+  sudo: yes

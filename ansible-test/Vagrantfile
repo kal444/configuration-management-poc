@@ -1,0 +1,33 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrantfile API/syntax version. Don't touch unless you know what you're doing!
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "ubuntu/precise64"
+
+  config.vm.define :web do |web|
+    web.vm.hostname = "dev-www.yellowaxe.vm"
+    web.vm.network :private_network, ip: "192.168.33.10"
+    web.vm.network :forwarded_port, guest: 80, host: 9080
+    web.vm.network :forwarded_port, guest: 443, host: 7043
+  end
+
+  config.vm.provider :virtualbox do |vb|
+    vb.customize ["modifyvm", :id, "--memory", "1024"]
+  end
+
+  config.vm.provision :ansible do |ansible|
+    # this ignores the normal inventory file
+    ansible.groups = {
+      "webservers" => [ :web ]
+    }
+    # this forces all remote users to be vagrant
+    ansible.extra_vars = { ansible_ssh_user: 'vagrant' }
+    ansible.sudo = true
+    ansible.playbook = "provisioning/site-phase1.yml"
+    #ansible.verbose = 'vvvv'
+  end
+end
+

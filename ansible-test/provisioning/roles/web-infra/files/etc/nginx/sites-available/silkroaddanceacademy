@@ -1,0 +1,20 @@
+server {
+  server_name silkroaddanceacademy.com silkroaddanceacademy.org;
+  return 301 $scheme://www.silkroaddanceacademy.com$request_uri;
+}
+
+server {
+  server_name www.silkroaddanceacademy.com www.silkroaddanceacademy.org;
+
+  root /srv/sites/silkroaddanceacademy;
+  index index.html index.htm;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  # deny access to .htaccess files
+  location ~ /\.ht {
+    deny all;
+  }
+}

@@ -1,0 +1,6 @@
+# loopback
+127.0.0.1 localhost localhost.localdomain
+::1 localhost localhost.localdomain
+# real IPs
+{{ hostvars[inventory_hostname]['ansible_eth0']['ipv4']['address'] }} {{ inventory_hostname }} {{ inventory_hostname_short }}
+{{ hostvars[inventory_hostname]['ansible_eth0']['ipv6'][0]['address'] }} {{ inventory_hostname }} {{ inventory_hostname_short }}

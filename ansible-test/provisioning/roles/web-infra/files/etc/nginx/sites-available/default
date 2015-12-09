@@ -1,0 +1,15 @@
+server {
+  server_name localhost;
+
+  root /usr/share/nginx/www;
+  index index.html index.htm;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  # deny access to .htaccess files
+  location ~ /\.ht {
+    deny all;
+  }
+}

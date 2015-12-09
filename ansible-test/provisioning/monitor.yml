@@ -1,0 +1,4 @@
+---
+- hosts: monitors
+  roles: monitor
+  sudo: yes

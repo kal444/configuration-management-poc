@@ -1,0 +1,64 @@
+- name: setup working path
+  file: path={{ vpn_working_path }} state=directory
+
+- name: setup installation path
+  file: path={{ vpn_installation_path }} state=directory
+
+- name: extract vpnserver package
+  unarchive: src={{ vpn_server_archive }} dest={{ vpn_working_path }}
+
+- name: stop vpn server if running
+  service: name=vpnserver state=stopped
+  ignore_errors: yes
+
+- name: ensure server can build package
+  apt: name=build-essential state=present
+
+- name: copy answer file to run make non-interactively
+  copy: src=make.answers dest={{ vpn_working_path }}/make.answers
+
+- name: execute build
+  shell: make < {{ vpn_working_path }}/make.answers
+  args:
+    chdir: "{{ vpn_working_path }}/vpnserver"
+    creates: vpnserver
+
+- name: fix permissions, removal
+  file: state=directory path={{ vpn_working_path }}/vpnserver mode=0600 recurse=yes
+- name: fix permissions, restore directories
+  command: chmod -R u+X vpnserver chdir={{ vpn_working_path }}
+- name: fix permissions, executables
+  file: state=file path={{ item }} mode=0700
+  with_items:
+    - "{{ vpn_working_path }}/vpnserver/vpnserver"
+    - "{{ vpn_working_path }}/vpnserver/vpncmd"
+
+- name: copy vpnserver to installation path
+  command: rsync -a {{ vpn_working_path }}/vpnserver/ {{ vpn_installation_path }}/
+
+- name: copy vpn server config
+  copy: src=vpn_server.config dest={{ vpn_installation_path }}/vpn_server.config mode=0600 backup=yes
+
+- name: copy vpnserver init.d script
+  template: src=vpnserver.initd.j2 dest={{ vpn_installation_path }}/vpnserver.initd mode=0700
+
+- name: link vpnserver init.d script
+  file: src={{ vpn_installation_path }}/vpnserver.initd dest=/etc/init.d/vpnserver state=link
+
+- name: setup lock directory
+  file: path=/var/lock/subsys state=directory
+
+- name: setup rc.d links
+  command: update-rc.d vpnserver defaults
+  notify: start vpnserver
+
+- name: remove working path
+  file: path={{ vpn_working_path }} state=absent
+
+- name: add firewall rules for udp
+  ufw: rule=allow port={{ item }} protocol=udp
+  with_items: [ 500, 4500, 1194, 9194 ]
+- name: add firewall rules for tcp
+  ufw: rule=allow port={{ item }} protocol=tcp
+  with_items: [ 9080, 9443 ]
+

@@ -1,0 +1,22 @@
+server {
+  server_name yellowaxe.com;
+  return 301 $scheme://www.yellowaxe.com$request_uri;
+}
+
+server {
+  listen 80 default_server;
+
+  server_name www.yellowaxe.com;
+
+  root /srv/sites/yellowaxe;
+  index index.html index.htm;
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  # deny access to .htaccess files
+  location ~ /\.ht {
+    deny all;
+  }
+}
